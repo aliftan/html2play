@@ -9,6 +9,7 @@ export default function Home() {
   const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Sync scroll positions
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement | HTMLPreElement>) => {
@@ -16,6 +17,29 @@ export default function Home() {
     if (textareaRef.current) textareaRef.current.scrollTop = scrollTop;
     if (preRef.current) preRef.current.scrollTop = scrollTop;
   };
+
+  // Update iframe content when HTML changes
+  useEffect(() => {
+    const updateIframe = () => {
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+
+      // Create a blob URL for the HTML content
+      const blob = new Blob([htmlCode], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+
+      // Update iframe src
+      iframe.src = url;
+
+      // Cleanup
+      return () => URL.revokeObjectURL(url);
+    };
+
+    const cleanup = updateIframe();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [htmlCode]);
 
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -62,7 +86,7 @@ export default function Home() {
               />
               <Highlight
                 theme={themes.github}
-                code={htmlCode || ' '} // Use space to prevent empty state
+                code={htmlCode || ' '}
                 language="html"
               >
                 {({ tokens, getLineProps, getTokenProps }) => (
@@ -96,8 +120,8 @@ export default function Home() {
                 <button
                   onClick={() => setViewport('desktop')}
                   className={`px-3 py-1 text-sm rounded-md ${viewport === 'desktop'
-                      ? 'bg-gray-900 text-white'
-                      : 'border border-gray-200 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-200 hover:bg-gray-50'
                     }`}
                 >
                   Desktop
@@ -105,8 +129,8 @@ export default function Home() {
                 <button
                   onClick={() => setViewport('mobile')}
                   className={`px-3 py-1 text-sm rounded-md ${viewport === 'mobile'
-                      ? 'bg-gray-900 text-white'
-                      : 'border border-gray-200 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white'
+                    : 'border border-gray-200 hover:bg-gray-50'
                     }`}
                 >
                   Mobile
@@ -115,12 +139,17 @@ export default function Home() {
             </div>
             <div className="p-4 flex-1 overflow-auto">
               <div
-                className={`mx-auto bg-white transition-all duration-300 relative
-                  ${viewport === 'mobile' ? 'max-w-[430px]' : 'w-full'}
-                  ${viewport === 'mobile' ? 'shadow-[0_0_0_1px_#e5e7eb]' : ''}
-                  ${viewport === 'mobile' ? 'rounded-lg' : ''}`}
+                className={`h-full mx-auto bg-white transition-all duration-300 relative
+      ${viewport === 'mobile' ? 'max-w-[430px]' : 'w-full'}
+      ${viewport === 'mobile' ? 'shadow-[0_0_0_1px_#e5e7eb]' : ''}
+      ${viewport === 'mobile' ? 'rounded-lg' : ''}`}
               >
-                <div dangerouslySetInnerHTML={{ __html: htmlCode }} />
+                <iframe
+                  ref={iframeRef}
+                  className="w-full h-full border-0"
+                  sandbox="allow-scripts"
+                  title="Preview"
+                />
               </div>
             </div>
           </div>
