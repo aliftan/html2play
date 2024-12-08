@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Github } from 'lucide-react';
 import { Highlight, themes } from 'prism-react-renderer';
 
 export default function Home() {
   const [htmlCode, setHtmlCode] = useState('');
   const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
+
+  // Sync scroll positions
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement | HTMLPreElement>) => {
+    const { scrollTop } = e.currentTarget;
+    if (textareaRef.current) textareaRef.current.scrollTop = scrollTop;
+    if (preRef.current) preRef.current.scrollTop = scrollTop;
+  };
 
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -44,26 +53,35 @@ export default function Home() {
           <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
             <div className="h-full relative">
               <textarea
-                className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none font-[family-name:var(--font-geist-mono)] bg-transparent absolute inset-0 text-transparent caret-black overflow-auto"
+                ref={textareaRef}
+                onScroll={handleScroll}
+                className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none font-[family-name:var(--font-geist-mono)] bg-transparent absolute inset-0 text-transparent caret-black overflow-auto placeholder-transparent"
                 value={htmlCode}
                 onChange={(e) => setHtmlCode(e.target.value)}
-                placeholder="Paste your HTML here..."
                 spellCheck={false}
               />
               <Highlight
                 theme={themes.github}
-                code={htmlCode}
+                code={htmlCode || ' '} // Use space to prevent empty state
                 language="html"
               >
                 {({ tokens, getLineProps, getTokenProps }) => (
-                  <pre className="w-full h-full p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto">
-                    {tokens.map((line, i) => (
-                      <div key={i} {...getLineProps({ line })}>
-                        {line.map((token, key) => (
-                          <span key={key} {...getTokenProps({ token })} />
-                        ))}
-                      </div>
-                    ))}
+                  <pre
+                    ref={preRef}
+                    onScroll={handleScroll}
+                    className="w-full h-full p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto"
+                  >
+                    {htmlCode ? (
+                      tokens.map((line, i) => (
+                        <div key={i} {...getLineProps({ line })}>
+                          {line.map((token, key) => (
+                            <span key={key} {...getTokenProps({ token })} />
+                          ))}
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-gray-400">Paste your HTML here...</span>
+                    )}
                   </pre>
                 )}
               </Highlight>
