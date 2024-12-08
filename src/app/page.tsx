@@ -47,7 +47,7 @@ export default function Home() {
       <header className="flex items-center justify-between p-4 border-b">
         <h1 className="text-2xl font-bold">Html2Figma</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">Built with love by alfio</span>
+          <span className="text-sm text-gray-600">Crafted by alfio</span>
           <a
             href="https://github.com/aliftan/html2figma"
             target="_blank"
