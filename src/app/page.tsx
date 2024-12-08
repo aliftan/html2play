@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Github } from 'lucide-react';
-import { Highlight, themes } from 'prism-react-renderer';
+import { useState, useRef } from 'react';
+import { Github, Trash2, Clipboard } from 'lucide-react';
+import { Highlight } from 'prism-react-renderer';
+import { HTMLPreview } from './components/HTMLPreview';
 
 export default function Home() {
   const [htmlCode, setHtmlCode] = useState('');
@@ -11,41 +12,25 @@ export default function Home() {
   const preRef = useRef<HTMLPreElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Sync scroll positions
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement | HTMLPreElement>) => {
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
     const { scrollTop } = e.currentTarget;
     if (textareaRef.current) textareaRef.current.scrollTop = scrollTop;
     if (preRef.current) preRef.current.scrollTop = scrollTop;
   };
 
-  // Update iframe content when HTML changes
-  useEffect(() => {
-    const updateIframe = () => {
-      const iframe = iframeRef.current;
-      if (!iframe) return;
-
-      // Create a blob URL for the HTML content
-      const blob = new Blob([htmlCode], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-
-      // Update iframe src
-      iframe.src = url;
-
-      // Cleanup
-      return () => URL.revokeObjectURL(url);
-    };
-
-    const cleanup = updateIframe();
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, [htmlCode]);
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setHtmlCode(text);
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+    }
+  };
 
   return (
     <div className="h-screen flex flex-col bg-white">
-      {/* Header */}
       <header className="flex items-center justify-between p-4 border-b">
-        <h1 className="text-2xl font-bold">Html2Figma</h1>
+        <h1 className="text-2xl font-bold">HTMLplay</h1>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">Crafted by alfio</span>
           <a
@@ -57,35 +42,80 @@ export default function Home() {
             <Github size={20} />
           </a>
         </div>
-      </header>
+      </header >
 
-      {/* Main Content */}
       <div className="flex gap-4 p-4 flex-1 min-h-0">
-        {/* Controls */}
-        <div className="flex flex-col gap-4">
-          <button
-            onClick={() => setHtmlCode('')}
-            className="px-4 py-2 text-sm border border-gray-200 rounded-md hover:bg-gray-50"
-          >
-            Clear All
-          </button>
-        </div>
-
-        {/* Editor and Preview */}
         <div className="flex-1 flex gap-4 min-h-0">
           {/* Editor Panel */}
-          <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
-            <div className="h-full relative">
+          <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
+              <span className="text-sm text-gray-600">Editor</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setHtmlCode('')}
+                  className="px-3 py-1 text-sm rounded-md border border-gray-200 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Trash2 size={14} />
+                  Clear
+                </button>
+                <button
+                  onClick={handlePaste}
+                  className="px-3 py-1 text-sm rounded-md border border-gray-200 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Clipboard size={14} />
+                  Paste
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden relative">
               <textarea
                 ref={textareaRef}
                 onScroll={handleScroll}
-                className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none font-[family-name:var(--font-geist-mono)] bg-transparent absolute inset-0 text-transparent caret-black overflow-auto placeholder-transparent"
+                className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none font-[family-name:var(--font-geist-mono)] bg-transparent absolute inset-0 text-transparent caret-gray-800 overflow-auto z-10"
                 value={htmlCode}
                 onChange={(e) => setHtmlCode(e.target.value)}
                 spellCheck={false}
               />
               <Highlight
-                theme={themes.github}
+                theme={{
+                  plain: {
+                    color: "#000000",
+                    backgroundColor: "#ffffff",
+                  },
+                  styles: [
+                    {
+                      types: ["tag", "doctype"],
+                      style: {
+                        color: "#22863a"
+                      }
+                    },
+                    {
+                      types: ["attr-name"],
+                      style: {
+                        color: "#6f42c1"
+                      }
+                    },
+                    {
+                      types: ["attr-value", "string"],
+                      style: {
+                        color: "#032f62"
+                      }
+                    },
+                    {
+                      types: ["comment"],
+                      style: {
+                        color: "#6a737d",
+                        fontStyle: 'italic'
+                      }
+                    },
+                    {
+                      types: ["script"],
+                      style: {
+                        color: "#24292e"
+                      }
+                    }
+                  ]
+                }}
                 code={htmlCode || ' '}
                 language="html"
               >
@@ -93,7 +123,7 @@ export default function Home() {
                   <pre
                     ref={preRef}
                     onScroll={handleScroll}
-                    className="w-full h-full p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto"
+                    className="w-full h-full p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto absolute inset-0 pointer-events-none"
                   >
                     {htmlCode ? (
                       tokens.map((line, i) => (
@@ -112,49 +142,14 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Preview Panel */}
-          <div className="flex-1 border border-gray-200 rounded-lg flex flex-col min-h-0">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
-              <span className="text-sm text-gray-600">Preview</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setViewport('desktop')}
-                  className={`px-3 py-1 text-sm rounded-md ${viewport === 'desktop'
-                    ? 'bg-gray-900 text-white'
-                    : 'border border-gray-200 hover:bg-gray-50'
-                    }`}
-                >
-                  Desktop
-                </button>
-                <button
-                  onClick={() => setViewport('mobile')}
-                  className={`px-3 py-1 text-sm rounded-md ${viewport === 'mobile'
-                    ? 'bg-gray-900 text-white'
-                    : 'border border-gray-200 hover:bg-gray-50'
-                    }`}
-                >
-                  Mobile
-                </button>
-              </div>
-            </div>
-            <div className="p-4 flex-1 overflow-auto">
-              <div
-                className={`h-full mx-auto bg-white transition-all duration-300 relative
-      ${viewport === 'mobile' ? 'max-w-[430px]' : 'w-full'}
-      ${viewport === 'mobile' ? 'shadow-[0_0_0_1px_#e5e7eb]' : ''}
-      ${viewport === 'mobile' ? 'rounded-lg' : ''}`}
-              >
-                <iframe
-                  ref={iframeRef}
-                  className="w-full h-full border-0"
-                  sandbox="allow-scripts"
-                  title="Preview"
-                />
-              </div>
-            </div>
-          </div>
+          <HTMLPreview
+            code={htmlCode}
+            viewport={viewport}
+            onViewportChange={setViewport}
+            iframeRef={iframeRef}
+          />
         </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -15,16 +15,25 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "HTML to Figma - Convert HTML Code to Figma Design",
-  description: "Convert your HTML code to Figma-ready design with live preview and viewport switching.",
+  title: "HTMLplay Preview - Modern HTML Code Editor",
+  description: "Live HTML editor with instant preview, viewport switching, and syntax highlighting. Fast, responsive, and developer-friendly.",
   icons: {
     icon: '/favicon.ico',
   },
-  keywords: ["html", "figma", "converter", "design", "tailwind", "css"],
+  keywords: [
+    "html",
+    "editor",
+    "live preview",
+    "code editor",
+    "web development",
+    "viewport preview",
+    "html editor",
+    "code preview"
+  ],
   authors: [{ name: "alfio" }],
   openGraph: {
-    title: "HTML to Figma Converter",
-    description: "Convert your HTML code to Figma-ready design with live preview",
+    title: "HTMLplay",
+    description: "Modern HTML code editor with live preview and mobile viewport switching",
     type: "website",
   },
 };
