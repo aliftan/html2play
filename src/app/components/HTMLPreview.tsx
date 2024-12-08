@@ -1,17 +1,70 @@
+"use client";
+
 import { useEffect } from 'react';
 
-interface HTMLPreviewProps {
+type HTMLPreviewProps = {
     code: string;
     viewport: 'desktop' | 'mobile';
     onViewportChange: (viewport: 'desktop' | 'mobile') => void;
-    iframeRef: React.RefObject<HTMLIFrameElement | null>; // Updated type
+    iframeRef: React.RefObject<HTMLIFrameElement | null>;
 }
 
 export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTMLPreviewProps) => {
     useEffect(() => {
         if (!iframeRef.current) return;
 
-        const blob = new Blob([code], { type: 'text/html' });
+        // Create a wrapper around the content with proper styling
+        const wrappedCode = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        /* Hide scrollbar by default */
+                        ::-webkit-scrollbar {
+                            width: 6px;
+                            height: 6px;
+                            display: none;
+                        }
+                        
+                        /* Show scrollbar on hover */
+                        body:hover::-webkit-scrollbar {
+                            display: block;
+                        }
+                        
+                        /* Scrollbar styling */
+                        ::-webkit-scrollbar-track {
+                            background: transparent;
+                        }
+                        
+                        ::-webkit-scrollbar-thumb {
+                            background: #a0aec0;
+                            border-radius: 3px;
+                        }
+
+                        /* Firefox */
+                        html {
+                            scrollbar-width: none;
+                        }
+                        
+                        body:hover {
+                            scrollbar-width: thin;
+                        }
+
+                        body {
+                            margin: 0;
+                            min-height: 100vh;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${code}
+                </body>
+            </html>
+        `;
+
+        const blob = new Blob([wrappedCode], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
 
         iframeRef.current.src = url;
@@ -44,9 +97,9 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                     </button>
                 </div>
             </div>
-            <div className="p-4 flex-1 overflow-auto">
+            <div className="flex-1 p-4">
                 <div
-                    className={`h-full mx-auto bg-white transition-all duration-300 relative
+                    className={`h-full mx-auto bg-white transition-all duration-300
                         ${viewport === 'mobile' ? 'max-w-[430px]' : 'w-full'}
                         ${viewport === 'mobile' ? 'shadow-[0_0_0_1px_#e5e7eb]' : ''}
                         ${viewport === 'mobile' ? 'rounded-lg' : ''}`}

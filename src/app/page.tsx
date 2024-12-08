@@ -45,9 +45,10 @@ export default function Home() {
       </header >
 
       <div className="flex gap-4 p-4 flex-1 min-h-0">
-        <div className="flex-1 flex gap-4 min-h-0">
+        {/* Main content wrapper */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
           {/* Editor Panel */}
-          <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+          <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden flex flex-col min-h-[300px] lg:min-h-0">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
               <span className="text-sm text-gray-600">Editor</span>
               <div className="flex gap-2">
@@ -67,11 +68,11 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 overflow-hidden relative hover-scroll">
               <textarea
                 ref={textareaRef}
                 onScroll={handleScroll}
-                className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none font-[family-name:var(--font-geist-mono)] bg-transparent absolute inset-0 text-transparent caret-gray-800 overflow-auto z-10"
+                className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none font-[family-name:var(--font-geist-mono)] bg-transparent absolute inset-0 text-transparent caret-gray-800 overflow-auto z-10 scrollbar-hide hover:scrollbar-default focus:scrollbar-default"
                 value={htmlCode}
                 onChange={(e) => setHtmlCode(e.target.value)}
                 spellCheck={false}
@@ -123,7 +124,7 @@ export default function Home() {
                   <pre
                     ref={preRef}
                     onScroll={handleScroll}
-                    className="w-full h-full p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto absolute inset-0 pointer-events-none"
+                    className="w-full h-full p-4 font-mono text-sm whitespace-pre-wrap break-words overflow-auto absolute inset-0 pointer-events-none scrollbar-hide hover:scrollbar-default focus:scrollbar-default"
                   >
                     {htmlCode ? (
                       tokens.map((line, i) => (
@@ -142,6 +143,7 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Preview Panel */}
           <HTMLPreview
             code={htmlCode}
             viewport={viewport}

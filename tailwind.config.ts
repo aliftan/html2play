@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import type { PluginAPI } from "tailwindcss/types/config";
 
 export default {
   content: [
@@ -29,5 +30,34 @@ export default {
       }
     },
   },
-  plugins: [],
+  plugins: [
+    function ({ addUtilities }: PluginAPI) {
+      addUtilities({
+        '.scrollbar-hide': {
+          /* Firefox */
+          'scrollbar-width': 'none',
+          /* Safari and Chrome */
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          }
+        },
+        '.scrollbar-default': {
+          /* Firefox */
+          'scrollbar-width': 'thin',
+          /* Safari and Chrome */
+          '&::-webkit-scrollbar': {
+            width: '6px',
+            height: '6px'
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent'
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#a0aec0',
+            borderRadius: '3px'
+          }
+        },
+      });
+    }
+  ],
 } satisfies Config;
