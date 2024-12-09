@@ -69,21 +69,32 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
 
                         html, body {
                             width: 100%;
-                            height: 100%;
-                            overflow: auto;
                             line-height: 1.5;
                             color: #111827;
+                            background: #F3F4F6;
                         }
 
                         body {
-                            min-height: 100vh;
+                            padding: 0; // Remove padding from body
+                            min-height: auto; // Let content determine height
+                        }
+
+                        // Add a container for the content
+                        .content-wrapper {
+                            padding: 16px;
                             background: white;
-                            padding: 0;
+                        }
+
+                        img {
+                            image-rendering: -webkit-optimize-contrast;
+                            image-rendering: crisp-edges;
                         }
                     </style>
                 </head>
                 <body>
-                    ${code}
+                    <div class="content-wrapper">
+                        ${code}
+                    </div>
                 </body>
             </html>
         `;
@@ -109,35 +120,112 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
             // Wait for fonts to load
             await document.fonts.ready;
 
-            // Wait for any images to load
             await Promise.all([
                 ...Array.from(iframeDocument.images)
                     .map(img => img.complete ? Promise.resolve() : new Promise(resolve => img.onload = resolve)),
-                // Add a small delay to ensure everything is rendered
-                new Promise(resolve => setTimeout(resolve, 100))
+                new Promise(resolve => setTimeout(resolve, 200))
             ]);
 
             const canvas = await html2canvas(iframeDocument.body, {
                 allowTaint: true,
                 useCORS: true,
-                backgroundColor: '#ffffff',
-                scale: window.devicePixelRatio * 2, // Adjust for device pixel ratio
+                backgroundColor: '#F3F4F6',
+                scale: window.devicePixelRatio * 2,
                 logging: false,
                 width: iframe.clientWidth,
-                height: iframe.clientHeight,
+                height: iframeDocument.documentElement.offsetHeight,
                 windowWidth: iframe.clientWidth,
-                windowHeight: iframe.clientHeight,
+                windowHeight: iframeDocument.documentElement.offsetHeight,
+                foreignObjectRendering: true,
+                removeContainer: true,
+                scrollY: 0,
+                scrollX: 0,
+
                 onclone: (clonedDoc) => {
-                    // Ensure styles are properly applied to cloned document
                     const style = clonedDoc.createElement('style');
                     style.textContent = `
-                        * { font-family: 'Inter', system-ui, -apple-system, sans-serif !important; }
-                        .button { font-smooth: always; -webkit-font-smoothing: antialiased; }
+                        * {
+                            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+                            -webkit-font-smoothing: antialiased !important;
+                            -moz-osx-font-smoothing: grayscale !important;
+                            font-weight: normal; // Add default font weight
+                        }
+
+                        strong, b, .font-medium {
+                            font-weight: 500 !important;
+                        }
+
+                        .font-semibold {
+                            font-weight: 600 !important;
+                        }
+                        
+                        /* Card Styles */
+                        .card {
+                            background: white;
+                            border-radius: 0.5rem;
+                            padding: 1rem;
+                            margin-bottom: 1rem;
+                        }
+                        
+                        /* Text Styles */
+                        .title {
+                            font-size: 1.125rem;
+                            font-weight: 600;
+                            color: #111827;
+                            margin-bottom: 0.25rem;
+                        }
+                        
+                        .subtitle {
+                            font-size: 0.875rem;
+                            color: #6B7280;
+                        }
+                        
+                        /* Points and Balance */
+                        .points {
+                            color: #22C55E;
+                            font-weight: 600;
+                        }
+                        
+                        .balance {
+                            color: #111827;
+                            font-weight: 600;
+                        }
+                        
+                        /* Buttons */
+                        .button {
+                            background: #3B82F6;
+                            color: white;
+                            padding: 0.75rem 1rem;
+                            border-radius: 0.375rem;
+                            font-weight: 500;
+                            text-align: center;
+                        }
+                        
+                        .button-secondary {
+                            background: #EF4444;
+                            color: white;
+                        }
+    
+                        /* Version Badge */
+                        .version {
+                            background: #EFF6FF;
+                            color: #3B82F6;
+                            padding: 0.25rem 0.5rem;
+                            border-radius: 0.25rem;
+                            font-size: 0.875rem;
+                        }
+    
+                        /* List Items */
+                        .list-item {
+                            display: flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                            margin: 0.5rem 0;
+                            color: #374151;
+                        }
                     `;
                     clonedDoc.head.appendChild(style);
-                },
-                x: 0,
-                y: 0
+                }
             });
 
             return canvas;
@@ -252,7 +340,7 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                 >
                     <iframe
                         ref={iframeRef}
-                        className="w-full h-full border-0"
+                        className="w-full h-full border-0 overflow-hidden"
                         sandbox="allow-scripts allow-same-origin"
                         title="Preview"
                     />
