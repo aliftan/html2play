@@ -1,8 +1,13 @@
+import html2canvas from 'html2canvas';
+
 type ViewportType = 'desktop' | 'mobile';
 
-interface PreviewStyles {
-    readonly content: string;
-    readonly viewport: ViewportType;
+// Extend Window interface to include our custom functions
+declare global {
+    interface Window {
+        captureFullPage: () => Promise<void>;
+        html2canvas: typeof html2canvas;
+    }
 }
 
 const generateIframeContent = (content: string): string => `
@@ -11,6 +16,12 @@ const generateIframeContent = (content: string): string => `
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <!-- Font Awesome -->
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+            <!-- Phosphor Icons -->
+            <script src="https://unpkg.com/@phosphor-icons/web"></script>
+            <!-- Import html2canvas -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
             <style>
                 * {
                     margin: 0;
@@ -31,12 +42,24 @@ const generateIframeContent = (content: string): string => `
                 }
 
                 .content-wrapper {
-                    padding: 16px;
+                    min-height: 100vh;
+                    background: white;
                 }
 
                 img {
                     max-width: 100%;
                     height: auto;
+                }
+
+                /* Icon Styles */
+                i.fa, i.fas, i.far, i.fab, i.ph {
+                    font-display: block;
+                }
+
+                /* Phosphor icons specific styles */
+                .ph {
+                    display: inline-block;
+                    vertical-align: middle;
                 }
             </style>
         </head>
@@ -44,11 +67,50 @@ const generateIframeContent = (content: string): string => `
             <div class="content-wrapper">
                 ${content}
             </div>
+            <script>
+                // Function to capture content
+                async function captureContent() {
+                    try {
+                        const content = document.querySelector('.content-wrapper');
+                        if (!content) return null;
+
+                        const canvas = await html2canvas(content, {
+                            scale: window.devicePixelRatio * 2,
+                            useCORS: true,
+                            allowTaint: true,
+                            backgroundColor: '#ffffff',
+                            logging: false,
+                            width: content.scrollWidth,
+                            height: content.scrollHeight,
+                            windowWidth: content.scrollWidth,
+                            windowHeight: content.scrollHeight,
+                            onclone: (clonedDoc) => {
+                                const style = clonedDoc.createElement('style');
+                                style.textContent = \`
+                                    i.fa, i.fas, i.far, i.fab {
+                                        font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+                                    }
+                                    .ph {
+                                        font-family: "Phosphor" !important;
+                                    }
+                                \`;
+                                clonedDoc.head.appendChild(style);
+                            }
+                        });
+                        return canvas.toDataURL('image/png', 1.0);
+                    } catch (error) {
+                        console.error('Failed to capture content:', error);
+                        return null;
+                    }
+                }
+
+                window.captureContent = captureContent;
+            </script>
         </body>
     </html>
 `;
 
-const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
+const generateFullPageHTML = (content: string, viewport: ViewportType): string => {
     const iframeContent = generateIframeContent(content);
     const iframeBlob = new Blob([iframeContent], { type: 'text/html' });
     const iframeUrl = URL.createObjectURL(iframeBlob);
@@ -59,6 +121,7 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <!-- Import html2canvas -->
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
                 <style>
                     * {
@@ -165,7 +228,7 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                 <div class="page-container">
                     <div class="preview-container ${viewport === 'mobile' ? 'mobile' : ''}">
                         <div class="preview-wrapper">
-                            <iframe src="${iframeUrl}" sandbox="allow-same-origin"></iframe>
+                            <iframe id="preview-iframe" src="${iframeUrl}" sandbox="allow-same-origin allow-scripts"></iframe>
                         </div>
                     </div>
                 </div>
@@ -223,34 +286,28 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                     }
 
                     async function captureFullPage() {
+                        const controls = document.querySelector('.floating-controls');
+                        const iframe = document.getElementById('preview-iframe');
+                        
                         try {
-                            const controls = document.querySelector('.floating-controls');
                             controls.style.display = 'none';
                             
-                            const iframe = document.querySelector('iframe');
-                            const iframeDoc = iframe.contentDocument;
-                            const contentBody = iframeDoc.body;
-
-                            const canvas = await html2canvas(contentBody, {
-                                allowTaint: true,
-                                useCORS: true,
-                                backgroundColor: '#fff',
-                                scale: window.devicePixelRatio * 2,
-                                logging: false,
-                                windowWidth: contentBody.scrollWidth,
-                                windowHeight: contentBody.scrollHeight,
-                                width: contentBody.scrollWidth,
-                                height: contentBody.scrollHeight,
-                            });
-
-                            controls.style.display = 'flex';
+                            // Wait for fonts to load
+                            await document.fonts.ready;
                             
+                            // Get the screenshot from iframe
+                            const dataUrl = await iframe.contentWindow.captureContent();
+                            if (!dataUrl) throw new Error('Failed to capture content');
+
+                            // Create and trigger download
                             const link = document.createElement('a');
                             link.download = 'preview.png';
-                            link.href = canvas.toDataURL('image/png', 1.0);
+                            link.href = dataUrl;
                             link.click();
                         } catch (error) {
-                            console.error('Failed to capture screenshot:', error);
+                            console.error('Screenshot failed:', error);
+                        } finally {
+                            controls.style.display = 'flex';
                         }
                     }
 
@@ -263,11 +320,11 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
     `;
 };
 
-export const openFullPagePreview = (code: string, viewport: ViewportType): void => {
+export const openFullPagePreview = async (code: string, viewport: ViewportType): Promise<void> => {
     const newWindow = window.open('', '_blank');
-    if (newWindow) {
-        const wrappedCode = generateFullPageHTML({ content: code, viewport });
-        newWindow.document.write(wrappedCode);
-        newWindow.document.close();
-    }
+    if (!newWindow) return;
+
+    const wrappedCode = generateFullPageHTML(code, viewport);
+    newWindow.document.write(wrappedCode);
+    newWindow.document.close();
 };
