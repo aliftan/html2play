@@ -115,6 +115,7 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
                         <style>
                             * {
                                 margin: 0;
@@ -147,12 +148,72 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                                 max-width: 100%;
                                 height: auto;
                             }
+
+                            #screenshot-button {
+                                position: fixed;
+                                bottom: 24px;
+                                right: 24px;
+                                padding: 12px;
+                                background: #111827;
+                                color: white;
+                                border: none;
+                                border-radius: 50%;
+                                cursor: pointer;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                transition: transform 0.2s;
+                                z-index: 1000;
+                            }
+
+                            #screenshot-button:hover {
+                                transform: scale(1.05);
+                            }
+
+                            #screenshot-button svg {
+                                width: 20px;
+                                height: 20px;
+                            }
                         </style>
                     </head>
                     <body>
                         <div class="content-wrapper">
                             ${code}
                         </div>
+                        <button id="screenshot-button" onclick="captureFullPage()" title="Take Screenshot">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                        </button>
+                        <script>
+                            async function captureFullPage() {
+                                try {
+                                    const button = document.getElementById('screenshot-button');
+                                    button.style.display = 'none';
+                                    
+                                    const canvas = await html2canvas(document.body, {
+                                        allowTaint: true,
+                                        useCORS: true,
+                                        backgroundColor: '#F3F4F6',
+                                        scale: window.devicePixelRatio * 2,
+                                        logging: false,
+                                        scrollY: 0,
+                                        scrollX: 0,
+                                    });
+
+                                    button.style.display = 'flex';
+                                    
+                                    const link = document.createElement('a');
+                                    link.download = 'full-page-preview.png';
+                                    link.href = canvas.toDataURL('image/png');
+                                    link.click();
+                                } catch (error) {
+                                    console.error('Failed to capture screenshot:', error);
+                                }
+                            }
+                        </script>
                     </body>
                 </html>
             `;
