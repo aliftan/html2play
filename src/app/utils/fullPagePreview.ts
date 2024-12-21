@@ -5,7 +5,54 @@ interface PreviewStyles {
     readonly viewport: ViewportType;
 }
 
+const generateIframeContent = (content: string): string => `
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                html {
+                    -webkit-font-smoothing: antialiased;
+                    -moz-osx-font-smoothing: grayscale;
+                    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                }
+
+                body {
+                    line-height: 1.5;
+                    color: #111827;
+                    background: white;
+                }
+
+                .content-wrapper {
+                    padding: 16px;
+                }
+
+                img {
+                    max-width: 100%;
+                    height: auto;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="content-wrapper">
+                ${content}
+            </div>
+        </body>
+    </html>
+`;
+
 const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
+    const iframeContent = generateIframeContent(content);
+    const iframeBlob = new Blob([iframeContent], { type: 'text/html' });
+    const iframeUrl = URL.createObjectURL(iframeBlob);
+
     return `
         <!DOCTYPE html>
         <html>
@@ -20,47 +67,38 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                         box-sizing: border-box;
                     }
                     
-                    html {
-                        -webkit-font-smoothing: antialiased;
-                        -moz-osx-font-smoothing: grayscale;
-                        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                    }
-                    
-                    body {
-                        line-height: 1.5;
-                        color: #111827;
+                    html, body {
+                        height: 100%;
                         background: #F9FAFB;
+                    }
+
+                    .page-container {
                         min-height: 100vh;
                         padding: 16px;
                     }
 
                     .preview-container {
-                        height: 100%;
-                        width: 100%;
+                        height: calc(100vh - 32px);
                         margin: 0 auto;
-                        transition: all 0.3s;
+                        transition: all 0.3s ease;
                     }
 
                     .preview-container.mobile {
                         max-width: 430px;
                     }
 
-                    .content-wrapper {
-                        width: 100%;
-                        min-height: calc(100vh - 32px);
+                    .preview-wrapper {
+                        height: 100%;
                         background: white;
-                        padding: 16px;
-                        transition: all 0.3s;
-                    }
-
-                    .mobile .content-wrapper {
                         border-radius: 8px;
+                        overflow: hidden;
                         box-shadow: 0 0 0 1px #e5e7eb;
                     }
 
-                    img {
-                        max-width: 100%;
-                        height: auto;
+                    iframe {
+                        width: 100%;
+                        height: 100%;
+                        border: 0;
                     }
 
                     .floating-controls {
@@ -124,9 +162,11 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                 </style>
             </head>
             <body>
-                <div class="preview-container ${viewport === 'mobile' ? 'mobile' : ''}">
-                    <div class="content-wrapper">
-                        ${content}
+                <div class="page-container">
+                    <div class="preview-container ${viewport === 'mobile' ? 'mobile' : ''}">
+                        <div class="preview-wrapper">
+                            <iframe src="${iframeUrl}" sandbox="allow-same-origin"></iframe>
+                        </div>
                     </div>
                 </div>
                 <div class="floating-controls">
@@ -142,7 +182,7 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                         </svg>
                     </button>
                     <button 
-                        class="control-button active" 
+                        class="control-button ${viewport === 'desktop' ? 'active' : ''}" 
                         onclick="toggleViewport('desktop')"
                         id="desktop-button"
                     >
@@ -154,7 +194,7 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                         </svg>
                     </button>
                     <button 
-                        class="control-button" 
+                        class="control-button ${viewport === 'mobile' ? 'active' : ''}" 
                         onclick="toggleViewport('mobile')"
                         id="mobile-button"
                     >
@@ -166,12 +206,11 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                     </button>
                 </div>
                 <script>
-                    const wrapper = document.querySelector('.content-wrapper');
-                    const desktopBtn = document.getElementById('desktop-button');
-                    const mobileBtn = document.getElementById('mobile-button');
-
                     function toggleViewport(type) {
                         const container = document.querySelector('.preview-container');
+                        const desktopBtn = document.getElementById('desktop-button');
+                        const mobileBtn = document.getElementById('mobile-button');
+
                         if (type === 'mobile') {
                             container.classList.add('mobile');
                             mobileBtn.classList.add('active');
@@ -183,35 +222,41 @@ const generateFullPageHTML = ({ content, viewport }: PreviewStyles): string => {
                         }
                     }
 
-                    function isDesktop() {
-                        return !document.querySelector('.preview-container').classList.contains('mobile');
-                    }
-
                     async function captureFullPage() {
                         try {
                             const controls = document.querySelector('.floating-controls');
                             controls.style.display = 'none';
                             
-                            const canvas = await html2canvas(document.body, {
+                            const iframe = document.querySelector('iframe');
+                            const iframeDoc = iframe.contentDocument;
+                            const contentBody = iframeDoc.body;
+
+                            const canvas = await html2canvas(contentBody, {
                                 allowTaint: true,
                                 useCORS: true,
-                                backgroundColor: '#F9FAFB',
+                                backgroundColor: '#fff',
                                 scale: window.devicePixelRatio * 2,
                                 logging: false,
-                                scrollY: 0,
-                                scrollX: 0,
+                                windowWidth: contentBody.scrollWidth,
+                                windowHeight: contentBody.scrollHeight,
+                                width: contentBody.scrollWidth,
+                                height: contentBody.scrollHeight,
                             });
 
                             controls.style.display = 'flex';
                             
                             const link = document.createElement('a');
-                            link.download = 'full-page-preview.png';
-                            link.href = canvas.toDataURL('image/png');
+                            link.download = 'preview.png';
+                            link.href = canvas.toDataURL('image/png', 1.0);
                             link.click();
                         } catch (error) {
                             console.error('Failed to capture screenshot:', error);
                         }
                     }
+
+                    window.addEventListener('unload', () => {
+                        URL.revokeObjectURL(document.querySelector('iframe').src);
+                    });
                 </script>
             </body>
         </html>
