@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Download, Copy, Monitor, Smartphone, Check, Maximize2 } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import { openFullPagePreview } from '../utils/fullPagePreview';
+
+// Extend Window interface to include our custom function
+declare global {
+    interface Window {
+        captureContent: () => Promise<string | null>;
+    }
+}
 
 type HTMLPreviewProps = {
     code: string;
@@ -26,6 +32,12 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                 <head>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <!-- Font Awesome -->
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+                    <!-- Phosphor Icons -->
+                    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+                    <!-- html2canvas for screenshots -->
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
                     <style>
                         /* Reset and base styles */
                         * {
@@ -72,7 +84,7 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                             width: 100%;
                             line-height: 1.5;
                             color: #111827;
-                            background: #F3F4F6;
+                            background: white;
                         }
 
                         body {
@@ -95,6 +107,45 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                     <div class="content-wrapper">
                         ${code}
                     </div>
+                    <script>
+                        // Function to capture content
+                        async function captureContent() {
+                            try {
+                                const content = document.querySelector('.content-wrapper');
+                                if (!content) return null;
+
+                                const canvas = await html2canvas(content, {
+                                    scale: window.devicePixelRatio * 2,
+                                    useCORS: true,
+                                    allowTaint: true,
+                                    backgroundColor: '#ffffff',
+                                    logging: false,
+                                    width: content.scrollWidth,
+                                    height: content.scrollHeight,
+                                    windowWidth: content.scrollWidth,
+                                    windowHeight: content.scrollHeight,
+                                    onclone: (clonedDoc) => {
+                                        const style = clonedDoc.createElement('style');
+                                        style.textContent = \`
+                                            i.fa, i.fas, i.far, i.fab {
+                                                font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+                                            }
+                                            .ph {
+                                                font-family: "Phosphor" !important;
+                                            }
+                                        \`;
+                                        clonedDoc.head.appendChild(style);
+                                    }
+                                });
+                                return canvas.toDataURL('image/png', 1.0);
+                            } catch (error) {
+                                console.error('Failed to capture content:', error);
+                                return null;
+                            }
+                        }
+
+                        window.captureContent = captureContent;
+                    </script>
                 </body>
             </html>
         `;
@@ -109,173 +160,54 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
 
     const handleFullPage = () => openFullPagePreview(code, viewport);
 
-    const capturePreview = async () => {
+    const handleSave = async () => {
         if (!iframeRef.current || capturing) return;
 
         try {
             setCapturing(true);
             const iframe = iframeRef.current;
-            const iframeDocument = iframe.contentDocument;
 
-            if (!iframeDocument) return null;
-
+            // Wait for fonts to load
             await document.fonts.ready;
 
-            await Promise.all([
-                ...Array.from(iframeDocument.images)
-                    .map(img => img.complete ? Promise.resolve() : new Promise(resolve => img.onload = resolve)),
-                new Promise(resolve => setTimeout(resolve, 200))
-            ]);
+            // Get the screenshot from iframe
+            const dataUrl = await iframe.contentWindow?.captureContent();
+            if (!dataUrl) throw new Error('Failed to capture content');
 
-            const canvas = await html2canvas(iframeDocument.body, {
-                allowTaint: true,
-                useCORS: true,
-                backgroundColor: '#F3F4F6',
-                scale: window.devicePixelRatio * 2,
-                logging: false,
-                width: iframe.clientWidth,
-                height: iframeDocument.documentElement.offsetHeight,
-                windowWidth: iframe.clientWidth,
-                windowHeight: iframeDocument.documentElement.offsetHeight,
-                foreignObjectRendering: true,
-                removeContainer: true,
-                scrollY: 0,
-                scrollX: 0,
-                onclone: (clonedDoc) => {
-                    const style = clonedDoc.createElement('style');
-                    style.textContent = `
-                        * {
-                            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-                            -webkit-font-smoothing: antialiased !important;
-                            -moz-osx-font-smoothing: grayscale !important;
-                            font-weight: normal;
-                        }
-
-                        strong, b, .font-medium {
-                            font-weight: 500 !important;
-                        }
-
-                        .font-semibold {
-                            font-weight: 600 !important;
-                        }
-                        
-                        /* Card Styles */
-                        .card {
-                            background: white;
-                            border-radius: 0.5rem;
-                            padding: 1rem;
-                            margin-bottom: 1rem;
-                        }
-                        
-                        /* Text Styles */
-                        .title {
-                            font-size: 1.125rem;
-                            font-weight: 600;
-                            color: #111827;
-                            margin-bottom: 0.25rem;
-                        }
-                        
-                        .subtitle {
-                            font-size: 0.875rem;
-                            color: #6B7280;
-                        }
-                        
-                        /* Points and Balance */
-                        .points {
-                            color: #22C55E;
-                            font-weight: 600;
-                        }
-                        
-                        .balance {
-                            color: #111827;
-                            font-weight: 600;
-                        }
-                        
-                        /* Buttons */
-                        .button {
-                            background: #3B82F6;
-                            color: white;
-                            padding: 0.75rem 1rem;
-                            border-radius: 0.375rem;
-                            font-weight: 500;
-                            text-align: center;
-                        }
-                        
-                        .button-secondary {
-                            background: #EF4444;
-                            color: white;
-                        }
-    
-                        /* Version Badge */
-                        .version {
-                            background: #EFF6FF;
-                            color: #3B82F6;
-                            padding: 0.25rem 0.5rem;
-                            border-radius: 0.25rem;
-                            font-size: 0.875rem;
-                        }
-    
-                        /* List Items */
-                        .list-item {
-                            display: flex;
-                            align-items: center;
-                            gap: 0.5rem;
-                            margin: 0.5rem 0;
-                            color: #374151;
-                        }
-                    `;
-                    clonedDoc.head.appendChild(style);
-                }
-            });
-
-            return canvas;
+            // Create and trigger download
+            const link = document.createElement('a');
+            link.download = 'preview.png';
+            link.href = dataUrl;
+            link.click();
         } catch (error) {
-            console.error('Failed to capture preview:', error);
-            return null;
+            console.error('Failed to save preview:', error);
         } finally {
             setCapturing(false);
         }
     };
 
-    const handleDownload = async () => {
+    const handleCopyImage = async () => {
         if (!iframeRef.current || capturing) return;
 
         try {
             setCapturing(true);
             const iframe = iframeRef.current;
-            const iframeDocument = iframe.contentDocument;
 
-            if (!iframeDocument) return;
+            // Get the screenshot from iframe
+            const dataUrl = await iframe.contentWindow?.captureContent();
+            if (!dataUrl) return;
 
-            await document.fonts.ready;
-            await Promise.all([
-                ...Array.from(iframeDocument.images)
-                    .map(img => img.complete ? Promise.resolve() : new Promise(resolve => img.onload = resolve)),
-                new Promise(resolve => setTimeout(resolve, 200))
+            // Convert data URL to blob
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+
+            // Copy to clipboard
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
             ]);
-
-            const canvas = await html2canvas(iframeDocument.querySelector('.preview-container') || iframeDocument.body, {
-                allowTaint: true,
-                useCORS: true,
-                backgroundColor: '#F9FAFB',
-                scale: window.devicePixelRatio * 2,
-                logging: false,
-                width: iframe.clientWidth,
-                height: iframeDocument.documentElement.offsetHeight,
-                windowWidth: iframe.clientWidth,
-                windowHeight: iframeDocument.documentElement.offsetHeight,
-                foreignObjectRendering: true,
-                removeContainer: true,
-                scrollY: 0,
-                scrollX: 0,
-            });
-
-            const link = document.createElement('a');
-            link.download = 'preview.png';
-            link.href = canvas.toDataURL('image/png', 1.0);
-            link.click();
+            setShowCopyTooltip(true);
         } catch (error) {
-            console.error('Failed to capture preview:', error);
+            console.error('Failed to copy image:', error);
         } finally {
             setCapturing(false);
         }
@@ -291,23 +223,6 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
         return () => clearTimeout(timeoutId);
     }, [showCopyTooltip]);
 
-    const handleCopyImage = async () => {
-        const canvas = await capturePreview();
-        if (!canvas) return;
-
-        try {
-            const blob = await new Promise<Blob>((resolve) => {
-                canvas.toBlob((blob) => resolve(blob!), 'image/png', 1.0);
-            });
-            await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob })
-            ]);
-            setShowCopyTooltip(true);
-        } catch (error) {
-            console.error('Failed to copy image:', error);
-        }
-    };
-
     return (
         <div className="flex-1 border border-gray-200 rounded-lg flex flex-col min-h-0">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
@@ -321,12 +236,12 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                         Full Page
                     </button>
                     <button
-                        onClick={handleDownload}
+                        onClick={handleSave}
                         disabled={capturing}
                         className="px-3 py-1 text-sm rounded-md border border-gray-200 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
                     >
                         <Download size={14} className="shrink-0" />
-                        Download
+                        Save
                     </button>
                     <div className="relative">
                         <button
@@ -352,8 +267,8 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                     <button
                         onClick={() => onViewportChange('desktop')}
                         className={`px-3 py-1 text-sm rounded-md flex items-center gap-2 ${viewport === 'desktop'
-                            ? 'bg-gray-900 text-white'
-                            : 'border border-gray-200 hover:bg-gray-50'
+                                ? 'bg-gray-900 text-white'
+                                : 'border border-gray-200 hover:bg-gray-50'
                             }`}
                     >
                         <Monitor size={14} className="shrink-0" />
@@ -362,8 +277,8 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                     <button
                         onClick={() => onViewportChange('mobile')}
                         className={`px-3 py-1 text-sm rounded-md flex items-center gap-2 ${viewport === 'mobile'
-                            ? 'bg-gray-900 text-white'
-                            : 'border border-gray-200 hover:bg-gray-50'
+                                ? 'bg-gray-900 text-white'
+                                : 'border border-gray-200 hover:bg-gray-50'
                             }`}
                     >
                         <Smartphone size={14} className="shrink-0" />
