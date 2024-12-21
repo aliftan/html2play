@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Download, Copy, Monitor, Smartphone, Check } from 'lucide-react';
+import { Download, Copy, Monitor, Smartphone, Check, Maximize2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 type HTMLPreviewProps = {
@@ -75,11 +75,10 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                         }
 
                         body {
-                            padding: 0; // Remove padding from body
-                            min-height: auto; // Let content determine height
+                            padding: 0;
+                            min-height: auto;
                         }
 
-                        // Add a container for the content
                         .content-wrapper {
                             padding: 16px;
                             background: white;
@@ -107,6 +106,61 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
         return () => URL.revokeObjectURL(url);
     }, [code, iframeRef]);
 
+    const handleFullPage = () => {
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+            const wrappedCode = `
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            * {
+                                margin: 0;
+                                padding: 0;
+                                box-sizing: border-box;
+                            }
+                            
+                            html {
+                                -webkit-font-smoothing: antialiased;
+                                -moz-osx-font-smoothing: grayscale;
+                                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                            }
+                            
+                            body {
+                                line-height: 1.5;
+                                color: #111827;
+                                background: #F3F4F6;
+                                min-height: 100vh;
+                            }
+
+                            .content-wrapper {
+                                max-width: ${viewport === 'mobile' ? '430px' : '100%'};
+                                margin: 0 auto;
+                                padding: 16px;
+                                background: white;
+                                min-height: 100vh;
+                            }
+
+                            img {
+                                max-width: 100%;
+                                height: auto;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="content-wrapper">
+                            ${code}
+                        </div>
+                    </body>
+                </html>
+            `;
+            newWindow.document.write(wrappedCode);
+            newWindow.document.close();
+        }
+    };
+
     const capturePreview = async () => {
         if (!iframeRef.current || capturing) return;
 
@@ -117,7 +171,6 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
 
             if (!iframeDocument) return null;
 
-            // Wait for fonts to load
             await document.fonts.ready;
 
             await Promise.all([
@@ -140,7 +193,6 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                 removeContainer: true,
                 scrollY: 0,
                 scrollX: 0,
-
                 onclone: (clonedDoc) => {
                     const style = clonedDoc.createElement('style');
                     style.textContent = `
@@ -148,7 +200,7 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
                             -webkit-font-smoothing: antialiased !important;
                             -moz-osx-font-smoothing: grayscale !important;
-                            font-weight: normal; // Add default font weight
+                            font-weight: normal;
                         }
 
                         strong, b, .font-medium {
@@ -243,7 +295,6 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
 
         const link = document.createElement('a');
         link.download = 'preview.jpeg';
-        // Use maximum quality for JPEG
         link.href = canvas.toDataURL('image/jpeg', 1.0);
         link.click();
     };
@@ -280,6 +331,13 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
             <div className="p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
                 <span className="text-sm text-gray-600">Preview</span>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleFullPage}
+                        className="px-3 py-1 text-sm rounded-md border border-gray-200 hover:bg-gray-50 flex items-center gap-2"
+                    >
+                        <Maximize2 size={14} className="shrink-0" />
+                        Full Page
+                    </button>
                     <button
                         onClick={handleDownloadJpeg}
                         disabled={capturing}
