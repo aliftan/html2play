@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "HTMLplay Preview - Modern HTML Code Editor",
   description: "Live HTML editor with instant preview, viewport switching, and syntax highlighting. Fast, responsive, and developer-friendly.",
   icons: {
-    icon: '/favicon.ico',
+    icon: "https://fav.farm/%F0%9F%A6%84"
   },
   keywords: [
     "html",
