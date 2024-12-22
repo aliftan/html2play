@@ -93,7 +93,6 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                         }
 
                         .content-wrapper {
-                            padding: 16px;
                             background: white;
                         }
 
