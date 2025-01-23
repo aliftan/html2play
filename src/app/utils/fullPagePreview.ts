@@ -38,7 +38,6 @@ const generateIframeContent = (content: string): string => `
                 body {
                     line-height: 1.5;
                     color: #111827;
-                    background: white;
                 }
 
                 .content-wrapper {

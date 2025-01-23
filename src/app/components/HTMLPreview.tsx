@@ -84,7 +84,6 @@ export const HTMLPreview = ({ code, viewport, onViewportChange, iframeRef }: HTM
                             width: 100%;
                             line-height: 1.5;
                             color: #111827;
-                            background: white;
                         }
 
                         body {
